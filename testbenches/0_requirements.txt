@@ -1,0 +1,24 @@
+# Dependencies for the vector generators in this folder.
+#
+# The leading 0 is there only to sort this file to the top of the directory listing,
+# ahead of the generators and testbenches it describes.
+#
+#   python -m venv .venv
+#   .venv/Scripts/activate                 # Linux: source .venv/bin/activate
+#   pip install -r testbenches/0_requirements.txt
+#
+# These scripts are golden models: the .hex and expected-*.txt files the testbenches
+# compare against are whatever they produce. A change in numpy integer or rounding
+# behaviour would therefore alter the golden data silently rather than fail loudly,
+# which is why the versions are pinned rather than left open.
+#
+# Pinned to what the thesis results were generated with, on CPython 3.14.5.
+# Relax to >= if you do not need to reproduce those vectors bit for bit.
+#
+# The generators also import argparse and math. Those are standard library modules that
+# ship with the interpreter, so pip has nothing to fetch and they are not listed here.
+# Listing argparse would in fact be harmful: a package of that name exists on PyPI as an
+# obsolete Python 2 era backport, and installing it shadows the real one.
+
+numpy==2.4.6
+tqdm==4.67.3

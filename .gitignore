@@ -1,0 +1,60 @@
+# ---------------------------------------------------------------------------
+# Generated simulation vectors.
+# Every .hex and expected-*.txt is produced by the matching
+# testbenches/*_generator.py, roughly 78 MB in total. The generators are
+# tracked, their output is not. See README.md, section "Simulation".
+# ---------------------------------------------------------------------------
+*.hex
+testbenches/*expected*.txt
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# ModelSim / QuestaSim, in case you simulate inside the working copy.
+# These files carry absolute local paths and must not be committed.
+work/
+transcript
+*.wlf
+*.mti
+*.mpf
+modelsim.ini
+.library_mapping.xml
+
+# ---------------------------------------------------------------------------
+# Vivado.
+# vivado/ holds only the non-regenerable project sources. Everything a build
+# produces stays out, including an exported Archive Project directory, which is
+# ~490 MB of checkpoints and carries a second copy of src/ that goes stale.
+#
+# Rebuilding also drops output beside the referenced block design, inside
+# vivado/ itself. See README.md, section "vivado/".
+# ---------------------------------------------------------------------------
+Vivado-HW-Acc.xpr/
+vivado/HW_Acc.bda
+vivado/ip/
+*.runs/
+*.gen/
+*.cache/
+*.ip_user_files/
+*.sim/
+*.hw/
+*.ipdefs/
+*.dcp
+*.bit
+*.bit.bin*
+*.xsa
+*.rpx
+.Xil/
+*.jou
+vivado*.log
+
+# Device-tree build output (compiled from deploy/HW_Acc.dts)
+*.dtbo
+
+# Editor and OS noise
+*.bak
+Thumbs.db
+.DS_Store

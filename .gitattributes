@@ -1,0 +1,8 @@
+# LF everywhere: normalized to LF in the repository, and checked out as LF on every
+# platform, including Windows. Without the explicit eol, a Windows clone with
+# core.autocrlf=true (the Git for Windows default) would convert to CRLF on checkout.
+#
+# Nothing in this repository needs CRLF. Vivado, GHDL, ModelSim, dtc, bootgen and
+# Python all read LF regardless of platform, and HW_Acc.dts, shell.json and the .bif
+# are consumed on the Kria, where LF is the only sane choice.
+* text=auto eol=lf

@@ -1,0 +1,120 @@
+/dts-v1/;
+/plugin/;
+
+/*
+ * HW_Acc overlay -- DUAL accelerator (F.12).
+ *
+ * Two orb_feature_top cores, each with its own AXI DMA on a separate PS HP port
+ * (instance 0 = HPC0, instance 1 = HPC1). Only the memory-mapped register files
+ * are exposed to userspace as generic-uio; the pixel/keypoint buffers are NOT
+ * device-tree nodes -- they are created by the u-dma-buf module load (see below).
+ *
+ * Instance 0 nodes are UNCHANGED from the single-instance overlay, so its proven
+ * /dev/uio4 (DMA regs) and /dev/uio5 (TOP regs) mapping is preserved. Instance 1
+ * is appended (regs first, then its IRQ nodes), so with the usual base UIO
+ * devices at uio0-3 the probe order is:
+ *
+ *     /dev/uio4   dma-regs          (inst 0 DMA control)   0xA0000000
+ *     /dev/uio5   orb-feature-top   (inst 0 TOP regs)      0xA0010000
+ *     /dev/uio6   dma-mm2s-irq      (inst 0 IRQ, polled)   SPI 89
+ *     /dev/uio7   dma-s2mm-irq      (inst 0 IRQ, polled)   SPI 90
+ *     /dev/uio8   dma1-regs         (inst 1 DMA control)   0xB0000000
+ *     /dev/uio9   orb1-feature-top  (inst 1 TOP regs)      0xB0010000
+ *     /dev/uio10  dma1-mm2s-irq     (inst 1 IRQ, polled)   SPI 91
+ *     /dev/uio11  dma1-s2mm-irq     (inst 1 IRQ, polled)   SPI 92
+ *
+ * Interrupts: the driver POLLS DMASR and never opens the *-irq uio nodes. They
+ * exist only so uio_pdrv_genirq registers and MASKS the wired PL->PS lines
+ * (an unhandled level-high SPI would otherwise storm). Instance 1's DMA introuts
+ * are routed to pl_ps_irq0[2]/[3] (SPI 91/92) in the block design -- Vivado
+ * auto-widened pl_ps_irq0 to [3:0] -- so both are declared here. Registering them
+ * in the overlay is a bitstream-free change (no BD re-route, no re-synth).
+ *   Wiring confirmed: concat In2 = axi_dma_1 mm2s_introut -> pl_ps_irq0[2] -> SPI 91,
+ *   In3 = axi_dma_1 s2mm_introut -> pl_ps_irq0[3] -> SPI 92 (In0/In1 = inst 0,
+ *   SPI 89/90). The driver reads neither node; they exist only to be masked.
+ *
+ * VERIFY the actual numbering on-board before running:
+ *     for d in /sys/class/uio/uio*; do echo "$d -> $(cat $d/name)"; done
+ * and reconcile kHwDeviceSets[] in ORBHwAccelerator.cc if the base offset differs
+ * (inst 1 regs are assumed at /dev/uio8 + /dev/uio9).
+ *
+ * u-dma-buf (module params -- NOT this overlay), sizes match udmabuf0/1:
+ *     sudo modprobe u-dma-buf \
+ *         udmabuf0=1048576 udmabuf1=1048576 \
+ *         udmabuf2=1048576 udmabuf3=1048576
+ *   -> inst 0 in/out = /dev/udmabuf0 /dev/udmabuf1
+ *      inst 1 in/out = /dev/udmabuf2 /dev/udmabuf3
+ *   All land in DDR_LOW (~0x35e00000, below 0x40000000): this is why HPC1's
+ *   DDR_LOW aperture had to be widened to 0x0/2G in the block design.
+ */
+
+/ {
+    fragment@0 {
+        target = <&fpga_full>;
+        __overlay__ {
+            firmware-name = "HW_Acc_wrapper.bit.bin";
+        };
+    };
+
+    fragment@1 {
+        target = <&amba>;
+        __overlay__ {
+            #address-cells = <2>;
+            #size-cells = <2>;
+
+            fclk0 {
+                compatible = "xlnx,fclk";
+                clocks = <&zynqmp_clk 71>;
+                assigned-clocks = <&zynqmp_clk 71>;
+                assigned-clock-rates = <125000000>;
+                #clock-cells = <0>;
+            };
+
+            /* ---- instance 0 (left / mono / RGBD) -- UNCHANGED ---- */
+            dma_regs: dma-regs@a0000000 {
+                compatible = "generic-uio";
+                reg = <0x0 0xA0000000 0x0 0x10000>;
+            };
+
+            orb_regs: orb-feature-top@a0010000 {
+                compatible = "generic-uio";
+                reg = <0x0 0xA0010000 0x0 0x1000>;
+            };
+
+            dma_mm2s_irq: dma-mm2s-irq {
+                compatible = "generic-uio";
+                interrupt-parent = <&gic>;
+                interrupts = <0 89 4>;
+            };
+
+            dma_s2mm_irq: dma-s2mm-irq {
+                compatible = "generic-uio";
+                interrupt-parent = <&gic>;
+                interrupts = <0 90 4>;
+            };
+
+            /* ---- instance 1 (right) -- appended (F.12); regs first ---- */
+            dma1_regs: dma1-regs@b0000000 {
+                compatible = "generic-uio";
+                reg = <0x0 0xB0000000 0x0 0x10000>;
+            };
+
+            orb1_regs: orb1-feature-top@b0010000 {
+                compatible = "generic-uio";
+                reg = <0x0 0xB0010000 0x0 0x1000>;
+            };
+
+            dma1_mm2s_irq: dma1-mm2s-irq {
+                compatible = "generic-uio";
+                interrupt-parent = <&gic>;
+                interrupts = <0 91 4>;
+            };
+
+            dma1_s2mm_irq: dma1-s2mm-irq {
+                compatible = "generic-uio";
+                interrupt-parent = <&gic>;
+                interrupts = <0 92 4>;
+            };
+        };
+    };
+};
